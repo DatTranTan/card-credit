@@ -18,7 +18,7 @@ export default function CardsPage() {
     const [cards, setCards] = useState<any[]>([]);
     const [banks, setBanks] = useState<any[]>([]);
     const [cardTypes, setCardTypes] = useState<any[]>([]);
-    
+
     // States quản lý Ghi chú Lịch (Calendar Notes)
     const [calendarNotes, setCalendarNotes] = useState<{ [key: string]: string }>({});
     const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
@@ -29,7 +29,7 @@ export default function CardsPage() {
     const [selectedOwner, setSelectedOwner] = useState<string>("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null); 
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
     const [cardToDelete, setCardToDelete] = useState<any>(null);
 
@@ -50,7 +50,7 @@ export default function CardsPage() {
     // Các biến phụ thuộc tự động tính toán lại mỗi khi State currentYear hoặc currentMonth thay đổi
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
     const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0: Chủ nhật, 1: Thứ 2...
-    
+
     const weekdays = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
 
     // Tạo danh sách năm từ (Năm hiện tại - 5 năm) đến (Năm hiện tại + 5 năm) để chọn
@@ -104,7 +104,7 @@ export default function CardsPage() {
         const dateKey = `${currentYear}-${paddedMonth}-${paddedDay}`;
 
         setSelectedDateStr(dateKey);
-        setNoteText(calendarNotes[dateKey] || ""); 
+        setNoteText(calendarNotes[dateKey] || "");
         setIsNoteModalOpen(true);
     };
 
@@ -248,10 +248,10 @@ export default function CardsPage() {
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                             📅 Lịch Ghi Chú Chi Tiêu & Nhắc Hạn
                         </h2>
-                        
+
                         {/* Cụm điều khiển chọn Tháng và Năm bất kỳ */}
                         <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <select 
+                            <select
                                 className="p-2 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm cursor-pointer"
                                 value={currentMonth}
                                 onChange={(e) => setCurrentMonth(Number(e.target.value))}
@@ -261,7 +261,7 @@ export default function CardsPage() {
                                 ))}
                             </select>
 
-                            <select 
+                            <select
                                 className="p-2 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm cursor-pointer"
                                 value={currentYear}
                                 onChange={(e) => setCurrentYear(Number(e.target.value))}
@@ -272,7 +272,7 @@ export default function CardsPage() {
                             </select>
                         </div>
                     </div>
-                    
+
                     {/* Hàng hiển thị Thứ */}
                     <div className="grid grid-cols-7 gap-2 text-center mb-1 text-xs font-bold text-gray-400">
                         {weekdays.map((day, idx) => (
@@ -284,7 +284,7 @@ export default function CardsPage() {
                     <div className="grid grid-cols-7 gap-2">
                         {/* Tạo các ô trống thụt lề đầu tháng */}
                         {Array(firstDayIndex).fill(null).map((_, idx) => (
-                            <div key={`empty-${idx}`} className="h-24 bg-gray-50/50 rounded-xl border border-dashed border-gray-200/60"></div>
+                            <div key={`empty-${idx}`} className="min-h-[6rem] bg-gray-50/50 rounded-xl border border-dashed border-gray-200/60"></div>
                         ))}
 
                         {/* Vòng lặp vẽ số ngày thực tế */}
@@ -293,30 +293,32 @@ export default function CardsPage() {
                             const pDay = String(dayNumber).padStart(2, '0');
                             const dateKey = `${currentYear}-${pMonth}-${pDay}`;
                             const hasNote = !!calendarNotes[dateKey];
-                            
-                            // Điều kiện kiểm tra chính xác ngày hôm nay (chỉ sáng đèn nếu trùng cả ngày, tháng, năm)
-                            const isToday = todayObj.getDate() === dayNumber && 
-                                            todayObj.getMonth() === currentMonth && 
-                                            todayObj.getFullYear() === currentYear;
+
+                            const isToday = todayObj.getDate() === dayNumber &&
+                                todayObj.getMonth() === currentMonth &&
+                                todayObj.getFullYear() === currentYear;
 
                             return (
-                                <div 
-                                    key={dayNumber} 
+                                <div
+                                    key={dayNumber}
                                     onClick={() => handleDayClick(dayNumber)}
-                                    className={`h-24 p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden text-left
+                                    // Đổi h-24 thành min-h-[6rem] và đổi justify-between thành justify-start
+                                    className={`min-h-[6rem] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-start group relative overflow-hidden text-left
                                         ${isToday ? 'bg-blue-50/70 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-sm'}
                                     `}
                                 >
                                     <span className={`text-sm font-bold ${isToday ? 'text-blue-600' : 'text-gray-700 group-hover:text-blue-600'}`}>
                                         {dayNumber}
                                     </span>
-                                    
+
                                     {hasNote ? (
-                                        <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-1 rounded font-medium line-clamp-2 mt-1 leading-tight w-full break-word">
+                                        // Bỏ line-clamp-2, thêm whitespace-pre-wrap để giữ nguyên định dạng xuống dòng của người dùng
+                                        <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-1.5 rounded font-medium mt-1.5 leading-relaxed w-full whitespace-pre-wrap break-words">
                                             {calendarNotes[dateKey]}
                                         </p>
                                     ) : (
-                                        <span className="text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity self-end">
+                                        // Đẩy chữ Thêm note xuống đáy ô
+                                        <span className="text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity mt-auto self-end pt-2">
                                             + Thêm note
                                         </span>
                                     )}
@@ -414,9 +416,9 @@ export default function CardsPage() {
                             <form onSubmit={handleSaveNote} className="p-6 space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-900 mb-1">Nội dung ghi chú</label>
-                                    <textarea 
+                                    <textarea
                                         rows={4}
-                                        placeholder="Nhập note chi tiêu, nhắc nhở hoặc nhật ký quẹt thẻ... (Để trống để xóa note)" 
+                                        placeholder="Nhập note chi tiêu, nhắc nhở hoặc nhật ký quẹt thẻ... (Để trống để xóa note)"
                                         className="w-full p-3 bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm"
                                         value={noteText}
                                         onChange={(e) => setNoteText(e.target.value)}
