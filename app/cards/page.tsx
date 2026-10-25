@@ -32,6 +32,9 @@ export default function CardsPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
     const [cardToDelete, setCardToDelete] = useState<any>(null);
+    const [dueDateFilter, setDueDateFilter] = useState<string>("all");
+    const [customStartDate, setCustomStartDate] = useState<string>("");
+    const [customEndDate, setCustomEndDate] = useState<string>("");
 
     const [formData, setFormData] = useState({
         bank: "",
@@ -42,18 +45,14 @@ export default function CardsPage() {
         annualFee: "",
     });
 
-    // NÂNG CẤP: Chuyển thông tin Tháng/Năm thành State để người dùng tự do lựa chọn
     const todayObj = new Date();
     const [currentYear, setCurrentYear] = useState<number>(todayObj.getFullYear());
-    const [currentMonth, setCurrentMonth] = useState<number>(todayObj.getMonth()); // Lưu từ 0 - 11
+    const [currentMonth, setCurrentMonth] = useState<number>(todayObj.getMonth()); 
 
-    // Các biến phụ thuộc tự động tính toán lại mỗi khi State currentYear hoặc currentMonth thay đổi
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); // 0: Chủ nhật, 1: Thứ 2...
+    const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay(); 
 
     const weekdays = ["Chủ Nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-
-    // Tạo danh sách năm từ (Năm hiện tại - 5 năm) đến (Năm hiện tại + 5 năm) để chọn
     const yearOptions = Array.from({ length: 11 }, (_, i) => todayObj.getFullYear() - 5 + i);
 
     useEffect(() => {
@@ -208,8 +207,40 @@ export default function CardsPage() {
 
     const uniqueOwners = Array.from(new Set(cards.map(c => c.owner?.trim()).filter(Boolean)));
     const filteredCards = selectedOwner ? cards.filter(c => c.owner?.trim() === selectedOwner) : cards;
-    const upcomingPayments = filteredCards.filter(c => c.paymentDueDate && !c.isPaidThisMonth)
+    // Lọc danh sách thẻ CÓ hạn thanh toán và CHƯA thanh toán
+    const baseUpcomingPayments = filteredCards
+        .filter(c => c.paymentDueDate && !c.isPaidThisMonth)
         .sort((a, b) => new Date(a.paymentDueDate).getTime() - new Date(b.paymentDueDate).getTime());
+
+    // Áp dụng bộ lọc thời gian
+    const upcomingPayments = baseUpcomingPayments.filter(card => {
+        if (dueDateFilter === "all") return true;
+
+        const dueDate = new Date(card.paymentDueDate);
+        dueDate.setHours(0, 0, 0, 0);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Lọc theo ngày tự chọn
+        if (dueDateFilter === "custom") {
+            const start = customStartDate ? new Date(customStartDate).setHours(0, 0, 0, 0) : -Infinity;
+            const end = customEndDate ? new Date(customEndDate).setHours(23, 59, 59, 999) : Infinity;
+            return dueDate.getTime() >= start && dueDate.getTime() <= end;
+        }
+
+        // Lọc theo khoảng thời gian nhanh (Bao gồm cả các thẻ đã quá hạn)
+        const targetDate = new Date(today);
+        if (dueDateFilter === "1_week") targetDate.setDate(today.getDate() + 7);
+        if (dueDateFilter === "2_weeks") targetDate.setDate(today.getDate() + 14);
+        if (dueDateFilter === "3_weeks") targetDate.setDate(today.getDate() + 21);
+        if (dueDateFilter === "1_month") targetDate.setMonth(today.getMonth() + 1);
+
+        return dueDate.getTime() <= targetDate.getTime();
+    });
+
+    // Tính tổng số tiền đến hạn thanh toán dựa trên danh sách đã lọc
+    const totalAmountDue = upcomingPayments.reduce((sum, card) => sum + (Number(card.amountDueThisMonth) || 0), 0);
 
     return (
         <div className="min-h-screen bg-gray-50 py-10 px-4 md:px-8 relative">
@@ -242,14 +273,13 @@ export default function CardsPage() {
                     </div>
                 </div>
 
-                {/* KHU VỰC 1: LỊCH CALENDAR GHI CHÚ (ĐÃ THAY ĐỔI Ô CHỌN THÁNG/NĂM BẤT KỲ) */}
+                {/* KHU VỰC 1: LỊCH CALENDAR GHI CHÚ */}
                 <div className="mb-8 bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 border-b border-gray-100 pb-4">
                         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                             📅 Lịch Ghi Chú Chi Tiêu & Nhắc Hạn
                         </h2>
 
-                        {/* Cụm điều khiển chọn Tháng và Năm bất kỳ */}
                         <div className="flex items-center gap-2 w-full sm:w-auto">
                             <select
                                 className="p-2 bg-gray-50 border border-gray-300 text-gray-900 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-semibold text-sm cursor-pointer"
@@ -273,26 +303,31 @@ export default function CardsPage() {
                         </div>
                     </div>
 
-                    {/* Hàng hiển thị Thứ */}
                     <div className="grid grid-cols-7 gap-2 text-center mb-1 text-xs font-bold text-gray-400">
                         {weekdays.map((day, idx) => (
                             <div key={idx} className={idx === 0 ? "text-red-400" : ""}>{day}</div>
                         ))}
                     </div>
 
-                    {/* Lưới các ô Ngày trong tháng */}
                     <div className="grid grid-cols-7 gap-2">
-                        {/* Tạo các ô trống thụt lề đầu tháng */}
                         {Array(firstDayIndex).fill(null).map((_, idx) => (
                             <div key={`empty-${idx}`} className="min-h-[6rem] bg-gray-50/50 rounded-xl border border-dashed border-gray-200/60"></div>
                         ))}
 
-                        {/* Vòng lặp vẽ số ngày thực tế */}
+                        {/* VÒNG LẶP VẼ NGÀY VÀ TỰ ĐỘNG THÊM NOTE */}
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((dayNumber) => {
                             const pMonth = String(currentMonth + 1).padStart(2, '0');
                             const pDay = String(dayNumber).padStart(2, '0');
                             const dateKey = `${currentYear}-${pMonth}-${pDay}`;
-                            const hasNote = !!calendarNotes[dateKey];
+                            
+                            // 1. Lấy note thủ công người dùng nhập
+                            const manualNote = calendarNotes[dateKey];
+                            
+                            // 2. Lọc thẻ sắp đến hạn vào chính ngày này (Tạo Note tự động)
+                            const cardsDueToday = upcomingPayments.filter(c => c.paymentDueDate === dateKey);
+                            
+                            // 3. Ngày này có bất kỳ loại note nào không?
+                            const hasAnyNote = !!manualNote || cardsDueToday.length > 0;
 
                             const isToday = todayObj.getDate() === dayNumber &&
                                 todayObj.getMonth() === currentMonth &&
@@ -302,7 +337,6 @@ export default function CardsPage() {
                                 <div
                                     key={dayNumber}
                                     onClick={() => handleDayClick(dayNumber)}
-                                    // Đổi h-24 thành min-h-[6rem] và đổi justify-between thành justify-start
                                     className={`min-h-[6rem] p-2 rounded-xl border transition-all cursor-pointer flex flex-col justify-start group relative overflow-hidden text-left
                                         ${isToday ? 'bg-blue-50/70 border-blue-300 ring-1 ring-blue-300' : 'bg-white border-gray-200 hover:border-blue-400 hover:shadow-sm'}
                                     `}
@@ -311,13 +345,23 @@ export default function CardsPage() {
                                         {dayNumber}
                                     </span>
 
-                                    {hasNote ? (
-                                        // Bỏ line-clamp-2, thêm whitespace-pre-wrap để giữ nguyên định dạng xuống dòng của người dùng
-                                        <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-1.5 rounded font-medium mt-1.5 leading-relaxed w-full whitespace-pre-wrap break-words">
-                                            {calendarNotes[dateKey]}
-                                        </p>
+                                    {hasAnyNote ? (
+                                        <div className="mt-1 flex flex-col gap-1 w-full">
+                                            {/* Render Note Tự Động Từ Thẻ Tín Dụng */}
+                                            {cardsDueToday.map(c => (
+                                                <div key={c._id} className="text-[10px] text-orange-700 bg-orange-50 border border-orange-200 p-1.5 rounded font-semibold leading-tight break-words">
+                                                    ⚠️ Hạn: {c.name} ({formatCurrency(c.amountDueThisMonth)}đ)
+                                                </div>
+                                            ))}
+                                            
+                                            {/* Render Note Thủ Công */}
+                                            {!!manualNote && (
+                                                <p className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-100 p-1.5 rounded font-medium leading-relaxed w-full whitespace-pre-wrap break-words mt-0.5">
+                                                    {manualNote}
+                                                </p>
+                                            )}
+                                        </div>
                                     ) : (
-                                        // Đẩy chữ Thêm note xuống đáy ô
                                         <span className="text-[10px] text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity mt-auto self-end pt-2">
                                             + Thêm note
                                         </span>
@@ -329,28 +373,83 @@ export default function CardsPage() {
                 </div>
 
                 {/* KHU VỰC LỊCH NHẮC NỢ THEO THẺ */}
-                {upcomingPayments.length > 0 && (
+                {baseUpcomingPayments.length > 0 && (
                     <div className="mb-8 bg-orange-50 border border-orange-200 rounded-2xl p-5 shadow-sm">
-                        <h2 className="text-lg font-bold text-orange-800 mb-4 flex items-center gap-2">
-                            ⚠️ Danh sách thẻ sắp đến hạn {selectedOwner && `của [${selectedOwner}]`}
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {upcomingPayments.map(card => (
-                                <div key={card._id} className="bg-white p-4 rounded-xl border border-orange-100 flex justify-between items-center shadow-sm">
-                                    <div>
-                                        <p className="font-bold text-gray-900 text-sm line-clamp-1">{card.name}</p>
-                                        <div className="flex gap-2 items-center mt-0.5">
-                                            <span className="text-xs text-gray-500">{card.bank}</span>
-                                            <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold">Thẻ: {card.owner || "Tôi"}</span>
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-5 gap-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-orange-800 flex items-center gap-2">
+                                    ⚠️ Danh sách thẻ sắp đến hạn {selectedOwner && `của [${selectedOwner}]`}
+                                </h2>
+                                <p className="text-sm font-medium text-orange-800 mt-1.5">
+                                    Tổng số tiền cần chuẩn bị: 
+                                    <span className="text-xl font-bold text-red-600 ml-2 bg-white px-2 py-1 rounded-lg border border-orange-200 shadow-sm">
+                                        {formatCurrency(totalAmountDue)} ₫
+                                    </span>
+                                </p>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                                <select 
+                                    className="p-2.5 bg-white border border-orange-300 text-orange-900 rounded-xl outline-none focus:ring-2 focus:ring-orange-400 font-semibold text-sm cursor-pointer shadow-sm"
+                                    value={dueDateFilter}
+                                    onChange={(e) => setDueDateFilter(e.target.value)}
+                                >
+                                    <option value="all">Tất cả thời gian</option>
+                                    <option value="1_week">Trong 1 tuần tới</option>
+                                    <option value="2_weeks">Trong 2 tuần tới</option>
+                                    <option value="3_weeks">Trong 3 tuần tới</option>
+                                    <option value="1_month">Trong 1 tháng tới</option>
+                                    <option value="custom">Tự chọn ngày...</option>
+                                </select>
+
+                                {/* Hiện ô chọn ngày nếu chế độ Tự chọn được bật */}
+                                {dueDateFilter === "custom" && (
+                                    <div className="flex items-center gap-2 bg-white border border-orange-300 rounded-xl p-1 shadow-sm">
+                                        <input 
+                                            type="date" 
+                                            className="p-1.5 bg-transparent text-sm font-semibold outline-none text-gray-700 cursor-pointer"
+                                            value={customStartDate}
+                                            onChange={(e) => setCustomStartDate(e.target.value)}
+                                            title="Từ ngày"
+                                        />
+                                        <span className="text-gray-400 text-sm font-bold">-</span>
+                                        <input 
+                                            type="date" 
+                                            className="p-1.5 bg-transparent text-sm font-semibold outline-none text-gray-700 cursor-pointer"
+                                            value={customEndDate}
+                                            onChange={(e) => setCustomEndDate(e.target.value)}
+                                            title="Đến ngày"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {upcomingPayments.length === 0 ? (
+                            <div className="text-center py-8 bg-white/50 rounded-xl border border-dashed border-orange-300">
+                                <p className="text-orange-700 font-medium text-sm">Không có thẻ nào cần thanh toán trong khoảng thời gian này.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {upcomingPayments.map(card => (
+                                    <div key={card._id} className="bg-white p-4 rounded-xl border border-orange-200 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow">
+                                        <div>
+                                            <p className="font-bold text-gray-900 text-sm line-clamp-1">{card.name}</p>
+                                            <div className="flex gap-2 items-center mt-1">
+                                                <span className="text-xs font-medium text-gray-500">{card.bank}</span>
+                                                <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-bold border border-blue-100">
+                                                    Thẻ: {card.owner || "Tôi"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0 ml-2">
+                                            <p className="font-bold text-red-600">{formatDateDisplay(card.paymentDueDate)}</p>
+                                            <p className="text-sm font-bold text-gray-900">{formatCurrency(card.amountDueThisMonth)} ₫</p>
                                         </div>
                                     </div>
-                                    <div className="text-right shrink-0 ml-2">
-                                        <p className="font-bold text-red-600">{formatDateDisplay(card.paymentDueDate)}</p>
-                                        <p className="text-xs font-bold text-gray-900">{formatCurrency(card.amountDueThisMonth)} ₫</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
